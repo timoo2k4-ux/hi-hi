@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIA ĐÊ BIA ĐÊ - Bảng Xếp Hạng Phạt Bia</title>
+    <!-- Thư viện đọc file Excel (.xlsx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f7f6; margin: 0; padding: 15px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        h1 { margin: 0; color: #2c3e50; font-size: 22px; text-align: center; flex: 1; }
+        
+        .admin-btn { background-color: #34495e; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .admin-btn:hover { background-color: #2c3e50; }
+
+        .summary-cards { display: flex; gap: 10px; margin-bottom: 15px; }
+        .card { flex: 1; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }
+        .card h3 { margin: 0 0 5px 0; color: #7f8c8d; font-size: 11px; text-transform: uppercase; }
+        .card .value { font-size: 20px; font-weight: bold; color: #2c3e50; }
+        
+        .controls-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: white; padding: 8px 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .sort-select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; cursor: pointer; }
+
+        .table-container { background: white; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto; max-height: 550px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+        th { background-color: #d35400; color: white; font-weight: 600; position: sticky; top: 0; z-index: 10; }
+        tr:hover { background-color: #f8f9fa; }
+        
+        .penalty-row { background-color: #fdf2f2 !important; }
+        .warning-top4 { background-color: #fcf8e3 !important; } /* Màu vàng cảnh báo Top 4 */
+        .warning-top5 { background-color: #fef9e7 !important; } /* Màu vàng nhẹ cảnh báo Top 5 */
+
+        .badge { padding: 3px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; display: inline-block; }
+        .badge-danger { background-color: #ff7675; color: white; }
+        .badge-success { background-color: #55efc4; color: #00b894; }
+        .fine-text { color: #c0392b; font-weight: bold; background: #fadbd8; padding: 3px 6px; border-radius: 4px; display: inline-block; }
+        .warning-text { color: #b7950b; font-weight: bold; background: #fcf3cf; padding: 3px 6px; border-radius: 4px; display: inline-block; }
+
+        #admin-panel { display: none; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); margin-bottom: 15px; border-left: 4px solid #d35400; }
+        #admin-panel h3 { margin-top: 0; color: #d35400; font-size: 15px; }
+        
+        .admin-section { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #e9ecef; }
+        .admin-section h4 { margin: 0 0 8px 0; color: #2c3e50; font-size: 13px; }
+        
+        .form-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; background: #fff; padding: 4px; border-radius: 4px; border: 1px solid #ddd; flex-wrap: wrap; }
+        .form-row input { padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px; }
+        .form-row label { font-size: 11px; font-weight: bold; color: #555; }
+        
+        .btn { padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; color: white; font-size: 11px; }
+        .btn-green { background-color: #27ae60; }
+        .btn-green:hover { background-color: #219653; }
+        .btn-blue { background-color: #2980b9; }
+        .btn-blue:hover { background-color: #3498db; }
+        .btn-red { background-color: #c0392b; padding: 4px 6px; }
+        .btn-red:hover { background-color: #a93226; }
+        .btn-purple { background-color: #8e44ad; }
+        .btn-purple:hover { background-color: #732d91; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-bar">
+        <h1>🍺 BIA ĐÊ BIA ĐÊ - BẢNG XẾP HẠNG PHẠT BIA 🏃‍♂️</h1>
+        <button class="admin-btn" onclick="toggleAdmin()">⚙️ Quản trị</button>
+    </div>
+
+    <!-- KHU VỰC QUẢN TRỊ ẨN (MẬT KHẨU: 1234) -->
+    <div id="admin-panel">
+        <h3>🔐 Quản Trị Hệ Thống (Mật khẩu: 1234)</h3>
+        
+        <div class="admin-section">
+            <h4>Chỉnh sửa thông tin & Cộng dồn KM chạy thêm</h4>
+            <div style="margin-bottom: 8px;">
+                <button class="btn btn-purple" onclick="addNewMemberRow()">➕ Thêm thành viên</button>
+            </div>
+            <div id="admin-edit-list" style="max-height: 220px; overflow-y: auto; margin-bottom: 10px; padding-right: 5px;"></div>
+            <button class="btn btn-green" onclick="saveManualData()">💾 Lưu tất cả thay đổi</button>
+        </div>
+
+        <div class="admin-section">
+            <h4>Hoặc cập nhật từ Excel / Google Sheet (CSV)</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="uploadExcel(event)" style="font-size: 11px;">
+                </div>
+                <div style="flex: 1; min-width: 200px; display: flex; gap: 5px;">
+                    <input type="text" id="gsheet-url" placeholder="Dán link CSV..." style="flex: 1; padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px;">
+                    <button class="btn btn-blue" onclick="syncGoogleSheet()">Tải</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="summary-cards">
+        <div class="card">
+            <h3>Tổng thành viên</h3>
+            <div class="value" id="total-members">0</div>
+        </div>
+        <div class="card">
+            <h3>Chưa mở App</h3>
+            <div class="value" style="color: #e74c3c;" id="no-app-count">0</div>
+        </div>
+        <div class="card">
+            <h3>Thành viên dính phạt</h3>
+            <div class="value" style="color: #d35400;" id="penalty-count">0</div>
+        </div>
+    </div>
+
+    <div class="controls-bar">
+        <span style="font-size: 13px; color: #2c3e50; font-weight: bold;">📊 Bảng chi tiết kết quả</span>
+        <div>
+            <label for="sort-order" style="font-size: 12px; font-weight: bold; color: #555; margin-right: 5px;">Sắp xếp theo thứ hạng phạt:</label>
+            <select id="sort-order" class="sort-select" onchange="renderTable()">
+                <option value="asc">Tăng dần (Phạt nặng nhất lên đầu)</option>
+                <option value="desc">Giảm dần (Từ trên xuống)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hình thức phạt bia</th>
+                    <th>Tên thật</th>
+                    <th>Phòng ban</th>
+                    <th>Tên trong App</th>
+                    <th>Số KM tổng</th>
+                    <th>Thứ hạng tổng</th>
+                    <th>Trạng thái App</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-data">
+                <!-- Dữ liệu nạp tự động bằng JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const defaultData = [
+        { name: "Tô Minh Kiệt", dept: "Kiểm toán", appName: "Tô Minh Kiệt", km: 19, rank: 13 },
+        { name: "Đặng Châu Thành Đạt", dept: "Kiểm toán", appName: "Đặng Châu Thành Đạt", km: 29, rank: 6 },
+        { name: "Bùi Trần Tính", dept: "Kiểm toán", appName: "Bùi Trần Tính", km: 36, rank: 2 },
+        { name: "Trần Hữu Đạt", dept: "Kiểm toán", appName: "Chấn thương chỉnh hình", km: 5, rank: 25 },
+        { name: "Nguyễn Trúc Thanh Vi", dept: "Kiểm toán", appName: "Nguyễn Trúc Thanh Vi", km: 0, rank: 39 },
+        { name: "Huỳnh Đại Chiến", dept: "Kiểm toán", appName: "Huỳnh Đại Chiến", km: 35, rank: 3 },
+        { name: "Nguyễn Thị Hoàng Trúc", dept: "Kiểm toán", appName: "Hoàng Trúc", km: 17, rank: 15 },
+        { name: "Lê Thị Thảo Phương", dept: "Kiểm toán", appName: "Lê Phương", km: 30, rank: 30 },
+        { name: "Nguyễn Thị Phương Thùy", dept: "Kiểm toán", appName: "", km: 0, rank: "chưa có hạng" },
+        { name: "Hoàng Hải Tường Vy", dept: "Kiểm toán", appName: "Hoang Hai Tuong Vy", km: 23, rank: 9 },
+        { name: "Nguyễn Thị Hoài Thương", dept: "Kiểm toán", appName: "Nguyễn Thị Hoài Thương", km: 22, rank: 11 },
+        { name: "Đặng Quỳnh Như", dept: "Kiểm toán", appName: "Đặng Quỳnh Như", km: 0, rank: 38 },
+        { name: "Cao Lê Duy", dept: "Kiểm toán", appName: "Caoleduy", km: 31, rank: 4 },
+        { name: "Thái Tuấn Tú", dept: "Kiểm toán", appName: "Tuấn Tú", km: 12, rank: 19 },
+        { name: "Lê Thị Thanh Ngân", dept: "Kiểm toán", appName: "ThanhNgânRẤTTHÍCHChạy", km: 10, rank: 20 },
+        { name: "Hoàng Gia Phú", dept: "Kiểm toán", appName: "Gia Phu", km: 0, rank: 34 },
+        { name: "Lê Khánh Đoan", dept: "Kiểm toán", appName: "Lê Khánh Đoan", km: 0, rank: 31 }
+    ];
+
+    let membersData = JSON.parse(localStorage.getItem('beer_penalty_data_v4')) || defaultData;
+
+    function renderTable() {
+        const tbody = document.getElementById('leaderboard-data');
+        tbody.innerHTML = '';
+
+        let noAppCount = 0;
+        let penaltyCount = 0;
+        const sortDirection = document.getElementById('sort-order').value;
+
+        // 1. Nhóm 0 km (hoặc chưa chạy): Đưa lên làm Top phạt nặng nhất (Hạng 1)
+        let zeroKmRunners = membersData.filter(m => m.km === 0);
+
+        // 2. Nhóm có chạy (> 0 km): Sắp xếp tăng dần theo số KM (ít km nhất xếp tiếp theo)
+        let activeRunners = membersData.filter(m => m.km > 0).sort((a, b) => a.km - b.km);
+
+        // Lấy danh sách các mức KM độc lập từ nhóm có chạy để gán phạt hạng 1, 2, 3 từ dưới lên (nếu nhóm 0km không tính vào hoặc tính chung tùy logic)
+        let uniqueKms = [...new Set(activeRunners.map(m => m.km))];
+        
+        // Nếu có người 0km, người 0km sẽ ăn phạt nặng nhất (Hạng 1 từ dưới lên)
+        // Sau đó các mức km tiếp theo tăng dần sẽ nhận hạng tiếp theo.
+        let minKm1 = uniqueKms.length > 0 ? uniqueKms[0] : -1;
+        let minKm2 = uniqueKms.length > 1 ? uniqueKms[1] : -1;
+
+        // Xây dựng danh sách thứ tự ưu tiên phạt:
+        // Nếu có người 0km -> Người 0km giữ priorityOrder = 1 (Phạt 12 lon)
+        // Tiếp theo activeRunners[0] (nếu không có 0km) hoặc activeRunners giữ các mức tiếp theo.
+        
+        let allRankedList = [];
+        if (zeroKmRunners.length > 0) {
+            // Tất cả người 0km đồng hạng 1 (phạt nặng nhất)
+            zeroKmRunners.forEach(m => {
+                m.fine = "🍺 12 lon bia (0 KM - Hạng 1)";
+                m.priorityOrder = 1;
+                penaltyCount++;
+            });
+            // Người chạy ít km nhất tiếp theo sẽ chịu phạt hạng 2
+            activeRunners.forEach(m => {
+                if (m.km === minKm1) {
+                    m.fine = "🍺 6 lon bia (Hạng 2 từ dưới lên)";
+                    m.priorityOrder = 2;
+                    penaltyCount++;
+                } else if (m.km === minKm2) {
+                    m.fine = "🍺 3 lon bia (Hạng 3 từ dưới lên)";
+                    m.priorityOrder = 3;
+                    penaltyCount++;
+                } else {
+                    m.fine = "-";
+                    m.priorityOrder = 99;
+                }
+            });
+        } else {
+            // Không có ai 0km thì áp dụng chuẩn cho nhóm chạy thấp nhất
+            activeRunners.forEach((m, idx) => {
+                if (idx === 0 || m.km === minKm1) {
+                    m.fine = "🍺 12 lon bia (Hạng 1 từ dưới lên)";
+                    m.priorityOrder = 1;
+                    penaltyCount++;
+                } else if (idx === 1 || m.km === minKm2) {
+                    m.fine = "🍺 6 lon bia (Hạng 2 từ dưới lên)";
+                    m.priorityOrder = 2;
+                    penaltyCount++;
+                } else if (idx === 2 || m.km === (uniqueKms.length > 2 ? uniqueKms[2] : -1)) {
+                    m.fine = "🍺 3 lon bia (Hạng 3 từ dưới lên)";
+                    m.priorityOrder = 3;
+                    penaltyCount++;
+                } else {
+                    m.fine = "-";
+                    m.priorityOrder = 99;
+                }
+            });
+        }
+
+        // Đánh dấu cảnh báo Top 4 và Top 5 cho những người còn lại gần vùng nguy hiểm
+        let unpunished = membersData.filter(m => m.priorityOrder === 99).sort((a, b) => a.km - b.km);
+        unpunished.forEach((m, idx) => {
+            if (idx === 0) {
+                m.warningType = "⚠️ Nguy cơ cao (Top 4)";
+                m.priorityOrder = 4;
+            } else if (idx === 1) {
+                m.warningType = "⚠️ Cảnh báo (Top 5)";
+                m.priorityOrder = 5;
+            } else {
+                m.warningType = "";
+                m.priorityOrder = 10 + idx;
+            }
+        });
+
+        membersData.forEach(member => {
+            if (!member.appName || member.appName.trim() === '') noAppCount++;
+        });
+
+        // Sắp xếp danh sách hiển thị theo lựa chọn của người dùng
+        membersData.sort((a, b) => {
+            if (sortDirection === 'asc') {
+                if (a.priorityOrder !== b.priorityOrder) return a.priorityOrder - b.priorityOrder;
+                return a.km - b.km;
+            } else {
+                if (a.priorityOrder !== b.priorityOrder) return b.priorityOrder - a.priorityOrder;
+                return b.km - a.km;
+            }
+        });
+
+        membersData.forEach((member) => {
+            const tr = document.createElement('tr');
+            
+            if (member.priorityOrder >= 1 && member.priorityOrder <= 3) {
+                tr.classList.add('penalty-row');
+            } else if (member.priorityOrder === 4 || member.km === 0) {
+                tr.classList.add('warning-top4');
+            } else if (member.priorityOrder === 5) {
+                tr.classList.add('warning-top5');
+            }
+
+            let appStatus = member.appName ? '<span class="badge badge-success">Đã mở App</span>' : '<span class="badge badge-danger">Chưa mở App</span>';
+            let displayCol1 = "-";
+            if (member.fine && member.fine !== "-") {
+                displayCol1 = `<span class="fine-text">${member.fine}</span>`;
+            } else if (member.warningType) {
+                displayCol1 = `<span class="warning-text">${member.warningType}</span>`;
+            }
+
+            tr.innerHTML = `
+                <td><strong>${displayCol1}</strong></td>
+                <td><strong>${member.name}</strong></td>
+                <td>${member.dept || 'Kiểm toán'}</td>
+                <td>${member.appName || '<em>Chưa cập nhật</em>'}</td>
+                <td><strong>${member.km}</strong> km</td>
+                <td>${member.rank} / 40</td>
+                <td>${appStatus}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('total-members').innerText = membersData.length;
+        document.getElementById('no-app-count').innerText = noAppCount;
+        document.getElementById('penalty-count').innerText = penaltyCount;
+    }
+
+    function toggleAdmin() {
+        const password = prompt("Nhập mật khẩu Quản trị (1234):");
+        if (password === "1234") {
+            const panel = document.getElementById('admin-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            if (panel.style.display === 'block') loadAdminForm();
+        } else if (password !== null) {
+            alert("Mật khẩu không đúng!");
+        }
+    }
+
+    function loadAdminForm() {
+        const container = document.getElementById('admin-edit-list');
+        container.innerHTML = '';
+        membersData.forEach((m, idx) => {
+            container.innerHTML += `
+                <div class="form-row" id="row_${idx}">
+                    <input type="text" placeholder="Tên thật" id="name_${idx}" value="${m.name}" style="flex: 2;">
+                    <input type="text" placeholder="Tên app" id="app_${idx}" value="${m.appName}" style="flex: 2;">
+                    <label>KM: <b>${m.km}</b></label>
+                    <input type="number" placeholder="+ KM thêm" id="add_km_${idx}" value="0" style="flex: 1;" title="Cộng dồn số km chạy thêm">
+                    <input type="text" placeholder="Hạng" id="rank_${idx}" value="${m.rank}" style="flex: 1;">
+                    <button type="button" class="btn btn-red" onclick="removeMemberRow(${idx})">❌</button>
+                </div>
